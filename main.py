@@ -3,8 +3,9 @@ WIFI = False
 RTC = True
 OLED = True
 DHT22 = True
+BME280 = True
 MULTISENSOR = True
-SD = False
+SD = True
 WDTimer = True
 NVStorage = False
 reset_reason_str = 'None'
@@ -27,6 +28,10 @@ if DHT22:
     from lib.sensor_dht22 import medir_temperatura, medir_humedad
     if DEBUG:
         print("importando lib.sensor_dht22...")
+if BME280:
+    from lib.sensor_bme280 import medir_temperatura_bme, medir_humedad_bme, medir_presion_bme
+    if DEBUG:
+        print("importando lib.sensor_bme280...")
 if MULTISENSOR:
     from lib.multisensor import read_multisensor, read_multisensor_param
     import json
@@ -102,17 +107,17 @@ while True:
         datos_hora = obtener_hora_actual()
         
     if DHT22:
-        temp = medir_temperatura()
+        dht_temp = medir_temperatura()
         time.sleep(0.5) # Evita errores en la toma de mediciones
-        hum = medir_humedad()
+        dht_hum = medir_humedad()
         if DEBUG:       
-            print("medicion temp hum ok...")
+            print("DHT medicion temp hum ok...")
         time.sleep(1)
         if DEBUG:
-            if temp is not None:
-               print('Temperatura: {}°C'.format(temp))
-            if hum is not None:
-               print('Humedad: {}%'.format(hum))
+            if dht_temp is not None:
+               print('Temperatura: {}°C'.format(dht_temp))
+            if dht_hum is not None:
+               print('Humedad: {}%'.format(dht_hum))
     
     if RTC: 
         now = leer_fecha_hora()
@@ -121,23 +126,51 @@ while True:
             print("lectura fecha hora ok...")   
             if now is not None:
                print('Hora: {}'.format(now))
+    
+    if BME280:
+        bme_temp = medir_temperatura_bme()
+        bme_hum = medir_humedad_bme()
+        bme_pres = medir_presion_bme()
+        if DEBUG:
+            print("medicion BME280 ok...")
+            if bme_temp is not None:
+                print('Temperatura BME280: {}°C'.format(bme_temp))
+            if bme_hum is not None:
+                print('Humedad BME280: {}%'.format(bme_hum))
+            if bme_pres is not None:
+                print('Presión BME280: {} hPa'.format(bme_pres))
 
     if MULTISENSOR:
         #value = read_multisensor_param()
-        (co2,voc,humidity,temp_ms,pm25) = read_multisensor()
+        (co2,voc,ms_hum,ms_temp,pm25) = read_multisensor()
 
         if DEBUG:
             print("lectura multisensor ok...")
             #print (json.dumps(value))        
 
 
-    print('Data Log: {:02d}:{:02d}:{:02d}:{:02d}:{:02d}:{:02d} Temp_DHT: {}°C Humedad_DHT: {}% Temp_Ms: {}°C Humidity_Ms: {}% PM2.5: {} reset_reason {}'.format(year, month, date, hour, minute, second, temp, hum, temp_ms, humidity, pm25, reset_reason_str))
+    print('Data Log: {:02d}:{:02d}:{:02d}:{:02d}:{:02d}:{:02d} co2: {} voc: {} PM2.5: {} reset_reason {}'
+               .format(year, month, date, hour, minute, second, co2, voc, pm25, reset_reason_str))
+    
+    print('Data Log: {:02d}:{:02d}:{:02d}:{:02d}:{:02d}:{:02d} bme_temp: {}°C bme_hum: {}% bme_pres: {}hPa'
+               .format(year, month, date, hour, minute, second, bme_temp, bme_hum, bme_pres))
+
+    print('Data Log: {:02d}:{:02d}:{:02d}:{:02d}:{:02d}:{:02d} dht_temp: {}°C dht_hum: {}% '
+               .format(year, month, date, hour, minute, second, dht_temp, dht_hum))
+
+    print('Data Log: {:02d}:{:02d}:{:02d}:{:02d}:{:02d}:{:02d} Ms_Temp: {}°C Ms_Hum: {}% '
+               .format(year, month, date, hour, minute, second, ms_temp, ms_hum))
+
+    
     if OLED:
-        mostrar_datos(temp, hum)
+        mostrar_datos(dht_temp, dht_hum)
 
     if SD:
         file=open("Datalogger.txt","a")
-        file.write ('{:02d},{:02d},{:02d},{:02d},{:02d},{:02d},{},{},{},{},{}\n'.format(year, month, date, hour, minute, second, temp, hum, temp_ms, humidity, pm25))
+        file.write ('{:02d},{:02d},{:02d},{:02d},{:02d},{:02d}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n'
+               .format(year, month, date, hour, minute, second, dht_temp, dht_hum, bme_temp, bme_hum, bme_pres, ms_temp, ms_hum, co2, pm25, voc, reset_reason_str))
+        if DEBUG:
+            file.write ('year, month, date, hour, minute, second, dht_temp, dht_hum, bme_temp, bme_hum, bme_pres_hPa, ms_temp, ms_hum, co2, pm25, voc, reset_reason_str\n')
         file.close()
         if DEBUG:
             print("escribiendo en SD Card...")
